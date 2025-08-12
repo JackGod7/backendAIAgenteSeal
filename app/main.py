@@ -1,12 +1,24 @@
 from fastapi import FastAPI, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from app.database import SessionLocal, engine, Base
 from app import crud, schemas
 
+# Crear tablas
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
+# Configuración de CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:4200"],  # frontend Angular
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Dependencia de base de datos
 def get_db():
     db = SessionLocal()
     try:
@@ -14,6 +26,21 @@ def get_db():
     finally:
         db.close()
 
+@app.post("/login", response_model=schemas.UserLoginOut)
+def login(user_data: schemas.UserLoginBase, db: Session = Depends(get_db)):
+    user = crud.authenticate_user(db, user_data.user, user_data.password)
+    if not user:
+        raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
+    return user
+
+@app.post("/login/change-password")
+def change_password(data: schemas.ChangePasswordRequest, db: Session = Depends(get_db)):
+    updated_user = crud.change_password(db, data.user, data.old_password, data.new_password)
+    if not updated_user:
+        raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
+    return {"message": "Contraseña cambiada correctamente"}
+
+# Rutas CRUD
 @app.get("/items/", response_model=list[schemas.QADataModelOut])
 def read_items(db: Session = Depends(get_db)):
     return crud.get_all_entries(db)

@@ -17,3 +17,22 @@ class QADataModelOut(QADataModelBase):
 
     class Config:
         from_attributes = True
+
+class ChangePasswordRequest(BaseModel):
+    user: str
+    old_password: str
+    new_password: str
+
+class UserLoginBase(BaseModel):
+    user: str
+    password: str
+
+class UserLoginCreate(UserLoginBase):
+    pass
+
+class UserLoginOut(BaseModel):
+    id: int
+    user: str
+
+    class Config:
+        from_attributes = True

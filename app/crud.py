@@ -1,7 +1,8 @@
 from sqlalchemy.orm import Session
-from app.models import QADataModel
+from app.models import QADataModel, UserLogin
 from app.schemas import QADataModelCreate, QADataModelUpdate
 
+# -------------------- CRUD QADataModel --------------------
 def get_all_entries(db: Session):
     return db.query(QADataModel).all()
 
@@ -30,3 +31,21 @@ def delete_entry(db: Session, entry_id: int):
         db.delete(db_entry)
         db.commit()
     return db_entry
+
+
+# -------------------- Login --------------------
+def authenticate_user(db: Session, username: str, password: str):
+    user = db.query(UserLogin).filter(UserLogin.user == username).first()
+    if user and user.password == password: 
+        return user
+    return None
+
+def change_password(db: Session, username: str, old_password: str, new_password: str):
+    user = authenticate_user(db, username, old_password)
+    if not user:
+        return None  # Usuario o contraseña incorrectos
+    
+    user.password = new_password  # Aquí deberías usar hashing si fuera productivo
+    db.commit()
+    db.refresh(user)
+    return user
