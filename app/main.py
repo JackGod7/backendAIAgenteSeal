@@ -1,24 +1,23 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
+from typing import Optional  
+
 from app.database import SessionLocal, engine, Base
 from app import crud, schemas
 
-# Crear tablas
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
-# Configuración de CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:4200"],  # frontend Angular
+    allow_origins=["http://localhost:4200"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Dependencia de base de datos
 def get_db():
     db = SessionLocal()
     try:
@@ -40,10 +39,37 @@ def change_password(data: schemas.ChangePasswordRequest, db: Session = Depends(g
         raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
     return {"message": "Contraseña cambiada correctamente"}
 
-# Rutas CRUD
-@app.get("/items/", response_model=list[schemas.QADataModelOut])
-def read_items(db: Session = Depends(get_db)):
-    return crud.get_all_entries(db)
+# --- RUTA MODIFICADA ---
+@app.get("/items/", response_model=schemas.PaginatedQAData)
+def read_items_paginated(
+    db: Session = Depends(get_db),
+    page: int = Query(1, gt=0, description="Número de página"),
+    page_size: int = Query(10, gt=0, le=100, description="Items por página"),
+    search: Optional[str] = Query(None, description="Término de búsqueda general"),
+    sort_by: Optional[str] = Query(None, description="Campo por el cual ordenar (ej: ID, Tema)"),
+    sort_order: str = Query('asc', description="Orden ('asc' o 'desc')")
+):
+    items_from_db, total_items = crud.get_paginated_entries(
+        db, 
+        page=page, 
+        page_size=page_size, 
+        search=search, 
+        sort_by=sort_by, 
+        sort_order=sort_order
+    )
+
+    start_index = (page - 1) * page_size
+    for i, item in enumerate(items_from_db):
+        item.NroItem = start_index + i + 1
+    
+    total_pages = (total_items + page_size - 1) // page_size
+
+    return {
+        "total_items": total_items,
+        "total_pages": total_pages,
+        "current_page": page,
+        "items": items_from_db
+    }
 
 @app.get("/items/{item_id}", response_model=schemas.QADataModelOut)
 def read_item(item_id: int, db: Session = Depends(get_db)):
