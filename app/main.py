@@ -25,8 +25,8 @@ Base.metadata.create_all(bind=engine)
 origins = [
     "http://localhost:4200",
     "http://192.168.52.60:4200",
+    "http://192.168.52.60:4200/", 
 ]
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -34,6 +34,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 def get_db():
     db = SessionLocal()
