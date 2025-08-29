@@ -1,23 +1,35 @@
 from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from typing import Optional  
+from typing import Optional
+from contextlib import asynccontextmanager
 
 from app.database import SessionLocal, engine, Base
 from app import crud, schemas
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Esto se ejecuta cuando la aplicación arranca
+    print("La aplicación está arrancando - Creando tablas si no existen...")
+    Base.metadata.create_all(bind=engine)
+    print("Tablas verificadas/creadas.")
+    yield
+    # Esto se ejecuta cuando la aplicación se apaga (no es necesario ahora)
+    print("La aplicación se está apagando.")
+
+
+app = FastAPI(lifespan=lifespan)
+
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI()
-
 origins = [
-    "http://localhost:4200",          # Origen para pruebas en la misma VM
-    "http://192.168.52.60:4200",     # Origen para el acceso desde tu PC
+    "http://localhost:4200",
+    "http://192.168.52.60:4200",
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins, 
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
